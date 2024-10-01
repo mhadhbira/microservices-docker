@@ -1,0 +1,61 @@
+version: "3.7"
+services:
+  eureka-server:
+    image: ranyamh/eureka-server:1.0.0 # Replace with your correct image name
+    container_name: eureka_server
+    ports:
+      - "8761:8761"
+    environment:
+      - EUREKA_INSTANCE_HOSTNAME=eureka-server
+    networks:
+      - exchange-network
+
+  postgres:
+    image: postgres:16.4
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: myFirstDatabase
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rania
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - exchange-network
+
+  exchange-service:
+    image: ranyamh/currency-exchange-service:1.0.4 # Replace with the correct image name
+    container_name: exchange_service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres_db:5432/myFirstDatabase
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: rania
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_APPLICATION_NAME: currency-exchange-service
+      ZIPKIN_HOST: zipkin
+      ZIPKIN_PORT: 9411
+    depends_on:
+      - eureka-server
+      - postgres
+      - zipkin
+    ports:
+      - "8000:8000"
+    networks:
+      - exchange-network
+
+  zipkin:
+    image: openzipkin/zipkin:3.4.1
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - exchange-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  exchange-network:
+    driver: bridge
